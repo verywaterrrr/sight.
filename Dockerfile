@@ -7,8 +7,8 @@ ENV DEBIAN_FRONTEND=noninteractive PYTHONUNBUFFERED=1 PORT=8080 \
 RUN apt-get update && apt-get install -y --no-install-recommends python3 python3-venv curl ca-certificates fontconfig fonts-dejavu-core libgomp1 \
     && curl -fL https://github.com/Audiveris/audiveris/releases/download/5.11.0/Audiveris-5.11.0-ubuntu24.04-x86_64.deb -o /tmp/audiveris.deb \
     && echo 'f20113aaa33b3149ec8d6a09b2a7963360e65fafd92d69389987a85bbc3ec7a3  /tmp/audiveris.deb' | sha256sum -c - \
-    && mkdir -p /usr/share/desktop-directories
-    && apt-get install -y --no-install-recommends /tmp/audiveris.deb
+    && mkdir -p /usr/share/desktop-directories \
+    && apt-get install -y --no-install-recommends /tmp/audiveris.deb \
     && sed -i -e 's/java-options=-Xms512m/java-options=-Xms128m/' -e 's/java-options=-Xmx8G/java-options=-Xmx512m/' /opt/audiveris/lib/app/Audiveris.cfg \
     && mkdir -p /opt/tessdata \
     && curl -fL https://raw.githubusercontent.com/tesseract-ocr/tessdata/c2b2e0df86272ce11be323f23f96cf656565ed41/eng.traineddata -o /opt/tessdata/eng.traineddata \
