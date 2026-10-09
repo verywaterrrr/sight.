@@ -4,16 +4,39 @@ from functools import partial
 from http.server import SimpleHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from urllib.parse import urlparse, parse_qs, unquote
-import hashlib, inspect, json, threading, uuid
+import hashlib, inspect, json, threading, uuid, os, time, shutil
 from recognition import recognize, available
 ROOT=Path(__file__).resolve().parents[1]
-CACHE=ROOT/'.runtime/jobs'
+CACHE=Path(os.environ.get('SIGHT_CACHE_DIR',str(ROOT/'.runtime/jobs')))
 CACHE.mkdir(parents=True,exist_ok=True)
 JOBS={};LOCK=threading.Lock();POOL=ThreadPoolExecutor(max_workers=1)
 LIMIT=64*1024*1024
+ALLOWED_ORIGINS=set(os.environ.get('SIGHT_ALLOWED_ORIGINS','https://verywaterrrr.github.io').split(','))
+MAX_JOBS=int(os.environ.get('SIGHT_MAX_PENDING_JOBS','4'))
+MAX_PAGES=int(os.environ.get('SIGHT_MAX_PAGES','100'))
+JOB_TTL=3600
+CACHE_TTL=86400
+
+def queue_available():
+    return sum(j['status'] in ('queued','running') for j in JOBS.values()) < MAX_JOBS
+
+def cleanup():
+    now=time.time()
+    with LOCK:
+        for key,job in list(JOBS.items()):
+            if job['status'] not in ('queued','running') and now-job.get('createdAt',now)>JOB_TTL:del JOBS[key]
+        active={j.get('cacheKey') for j in JOBS.values() if j['status'] in ('queued','running')}
+    for directory in CACHE.iterdir():
+        if directory.is_dir() and directory.name not in active and now-directory.stat().st_mtime>CACHE_TTL:shutil.rmtree(directory,ignore_errors=True)
+
+def housekeeping():
+    while True:
+        try:cleanup()
+        except OSError:pass
+        time.sleep(60)
 
 def worker(job,data,pages,key):
-    directory=CACHE/key;directory.mkdir(exist_ok=True)
+    directory=CACHE/key;directory.mkdir(exist_ok=True);os.utime(directory,None)
     try:
         if job['cancel'].is_set(): return
         result_file=directory/'score.json'
@@ -41,6 +64,16 @@ def worker(job,data,pages,key):
 
 class Handler(SimpleHTTPRequestHandler):
     def __init__(self,*a,**kw):super().__init__(*a,directory=str(ROOT),**kw)
+    def end_headers(self):
+        if self.headers.get('Origin') in ALLOWED_ORIGINS:
+            self.send_header('Access-Control-Allow-Origin',self.headers['Origin']);self.send_header('Vary','Origin')
+        super().end_headers()
+    def origin_allowed(self):
+        origin=self.headers.get('Origin')
+        return not origin or origin in ALLOWED_ORIGINS or urlparse(origin).netloc==self.headers.get('Host')
+    def do_OPTIONS(self):
+        if not self.origin_allowed():return self.send_json({'error':'This browser origin is not allowed.'},403)
+        self.send_response(204);self.send_header('Access-Control-Allow-Methods','GET,POST,DELETE,OPTIONS');self.send_header('Access-Control-Allow-Headers','Content-Type');self.send_header('Access-Control-Max-Age','600');self.send_header('Content-Length','0');self.end_headers()
     def send_json(self,data,status=200):
         body=json.dumps(data).encode();self.send_response(status);self.send_header('Content-Type','application/json');self.send_header('Content-Length',str(len(body)));self.send_header('Cache-Control','no-store');self.end_headers();
         if self.command!='HEAD':self.wfile.write(body)
@@ -49,13 +82,15 @@ class Handler(SimpleHTTPRequestHandler):
         if path=='/assets/app-config.json':
             config=json.loads((ROOT/'assets/app-config.json').read_text())
             config['recognitionAvailable']=available()
+            config['recognitionApiBase']=''
+            config['cloudHosted']=bool(os.environ.get('RAILWAY_PROJECT_ID'))
             if (ROOT/'assets/united-in-purpose.pdf').is_file() and (ROOT/'assets/recognized-sample.json').is_file():
                 config['sample']={'id':'united-in-purpose','title':'United in Purpose','subtitle':'Rollo Dilworth · SATB & piano','pdf':'./assets/united-in-purpose.pdf','score':'./assets/recognized-sample.json','description':'Private testing score · 15 pages','cover':'UNITED\nIN PURPOSE'}
             return self.send_json(config)
         if path=='/api/health':return self.send_json({'recognition':available(),'maxUploadBytes':LIMIT})
         if path.startswith('/api/jobs/'):
             with LOCK:
-                job=JOBS.get(path.rsplit('/',1)[-1]);data={k:v for k,v in job.items() if k!='cancel'} if job else None
+                job=JOBS.get(path.rsplit('/',1)[-1]);data={k:v for k,v in job.items() if k not in ('cancel','cacheKey')} if job else None
             return self.send_json(data or {'error':'Job not found.'},200 if data else 404)
         if any(segment.startswith('.') for segment in path.split('/')) or path.startswith(('/server/','/tests/','/docs/')):
             return self.send_error(404)
@@ -63,6 +98,7 @@ class Handler(SimpleHTTPRequestHandler):
         else:super().do_GET()
     def do_HEAD(self):self.do_GET()
     def do_POST(self):
+        if not self.origin_allowed():return self.send_json({'error':'This browser origin is not allowed.'},403)
         parsed=urlparse(self.path)
         if parsed.path!='/api/jobs':return self.send_json({'error':'Unknown endpoint.'},404)
         if not available():return self.send_json({'error':'Recognition engine unavailable. Run the documented local setup.'},503)
@@ -71,7 +107,8 @@ class Handler(SimpleHTTPRequestHandler):
             length=int(self.headers.get('Content-Length',0))
             if length<=0 or length>LIMIT:return self.send_json({'error':'PDF upload must be under 64 MB.'},413)
             pages=[int(p) for p in parse_qs(parsed.query).get('pages',[''])[0].split(',')]
-            if not pages or pages!=sorted(set(pages)) or min(pages)<0 or max(pages)>10000 or len(pages)>100:raise ValueError('Select valid pages in their original order.')
+            if not pages or pages!=sorted(set(pages)) or min(pages)<0 or max(pages)>10000 or len(pages)>MAX_PAGES:raise ValueError(f'Select valid pages in their original order, up to {MAX_PAGES} at a time.')
+            self.connection.settimeout(30)
             data=self.rfile.read(length)
             if not data.startswith(b'%PDF-'):raise ValueError('This is not a readable PDF.')
             from pypdf import PdfReader
@@ -80,13 +117,17 @@ class Handler(SimpleHTTPRequestHandler):
             if reader.is_encrypted:raise ValueError('Password-protected PDFs are not supported.')
             if len(reader.pages)!=len(pages):raise ValueError('Submitted PDF must contain only the selected pages.')
             key=hashlib.sha256(data+json.dumps(pages).encode()+b'Audiveris-5.11-provider-v2').hexdigest()
-            job={'id':uuid.uuid4().hex,'status':'queued','message':'Waiting to process selected pages.','cancel':threading.Event()}
-            with LOCK:JOBS[job['id']]=job
+            job={'id':uuid.uuid4().hex,'status':'queued','message':'Waiting to process selected pages.','cancel':threading.Event(),'createdAt':time.time(),'cacheKey':key}
+            with LOCK:
+                if not queue_available():return self.send_json({'error':'Recognition is busy. Please retry shortly.'},429)
+                JOBS[job['id']]=job
             POOL.submit(worker,job,data,pages,key)
             return self.send_json({'id':job['id']},202)
         except (ValueError,ImportError) as error:return self.send_json({'error':str(error)},400)
         except Exception:return self.send_json({'error':'Could not read this PDF.'},400)
     def do_DELETE(self):
+        if not self.origin_allowed():return self.send_json({'error':'This browser origin is not allowed.'},403)
+        if not urlparse(self.path).path.startswith('/api/jobs/'):return self.send_json({'error':'Unknown endpoint.'},404)
         with LOCK:
             job=JOBS.get(urlparse(self.path).path.rsplit('/',1)[-1])
             if job:job['cancel'].set();job.update(status='cancelled',message='Recognition cancelled.')
@@ -94,11 +135,12 @@ class Handler(SimpleHTTPRequestHandler):
 
 if __name__=='__main__':
     import argparse
-    p=argparse.ArgumentParser();p.add_argument('--port',type=int,default=5173);p.add_argument('--cert');p.add_argument('--key');args=p.parse_args()
+    p=argparse.ArgumentParser();p.add_argument('--port',type=int,default=int(os.environ.get('PORT','5173')));p.add_argument('--cert');p.add_argument('--key');args=p.parse_args()
     server=ThreadingHTTPServer(('0.0.0.0',args.port),Handler)
     if args.cert:
         import ssl
         context=ssl.SSLContext(ssl.PROTOCOL_TLS_SERVER);context.minimum_version=ssl.TLSVersion.TLSv1_2;context.load_cert_chain(args.cert,args.key)
         server.socket=context.wrap_socket(server.socket,server_side=True)
     print(f'Sight: {"https" if args.cert else "http"}://localhost:{args.port}',flush=True)
+    threading.Thread(target=housekeeping,daemon=True).start()
     server.serve_forever()
