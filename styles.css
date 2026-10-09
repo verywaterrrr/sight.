@@ -24,3 +24,6 @@
 @media(min-width:760px){.tempo-step{width:44px;min-height:44px}.reading-actions .icon-button{width:44px}.text-button{min-height:44px}select{min-height:44px}.thumbnail-caption .icon-button{width:44px;min-height:44px}}
 
 .review-warning-panel{margin:0 30px 14px;font-size:10px;max-height:105px;overflow:auto;border:1px solid #d9dfcb;background:#f1f4e9;border-radius:8px;padding:9px 14px;flex-shrink:0}.review-warning-panel summary{cursor:pointer;color:#5f7050;font-weight:500}.review-warning-panel ul{padding-left:18px;margin-top:6px;line-height:1.6;color:#747e69}#review-note-picker{max-width:155px}
+
+.repeat-highlighter{position:absolute;background:rgba(255,221,46,.55);mix-blend-mode:multiply;border-radius:3px;pointer-events:none;z-index:2;}
+.repeat-highlighter[hidden]{display:none;}

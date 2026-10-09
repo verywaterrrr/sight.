@@ -20,3 +20,7 @@ test('reincluding demo pages preserves edited notes and avoids nesting saved sou
  const source={parts:[{id:'S',name:'Soprano'}],duration:8,warnings:[],staves:{0:[],1:[]},measures:[0,1].map(p=>({number:p+1,page:p,start:p*4,duration:4,timeSig:{num:4,den:4}})),events:[0,1].map(p=>({id:`n${p}`,page:p,measure:p+1,time:p*4,beat:0,duration:1,midi:60,part:'S'}))};
  const chosen=scoreForPages(source,[1]);chosen.events[0].midi=64;chosen.events[0].reviewed=true;const result=scoreForPages(chosen,[0,1]);assert.deepEqual(result.events.map(n=>n.midi),[60,64]);assert.equal(result.events[1].time,4);assert.equal(result.pageSource.pageSource,undefined);
 });
+test('page filtering remaps complete repeats and drops incomplete passages',()=>{
+ const source={parts:[],duration:16,warnings:[],events:[],staves:{},measures:[0,1,2,3].map(page=>({number:page+1,page,start:page*4,duration:4})),repeats:[{id:'r',startMeasure:3,endMeasure:4,times:2}],repeatMarks:[{repeatId:'r',page:3}],endings:[{repeatId:'r',startMeasure:4,endMeasure:4,numbers:[1]}]};
+ const full=scoreForPages(source,[2,3]);assert.deepEqual(full.repeats,[{id:'r',startMeasure:1,endMeasure:2,times:2}]);assert.equal(full.endings[0].startMeasure,2);assert.equal(full.repeatMarks.length,1);const partial=scoreForPages(source,[3]);assert.deepEqual(partial.repeats,[]);assert.deepEqual(partial.repeatMarks,[]);assert.deepEqual(partial.endings,[]);
+});

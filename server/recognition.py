@@ -74,7 +74,14 @@ def _geometry(omr_path, part_ids):
                     slots = {s.attrib['id']: _q(s.attrib.get('time-offset')) * 4 for s in stack.findall('slot')}
                     record = {'page': sheet_number - 1, 'system': system_index, 'groups': defaultdict(list),
                               'duration': _q(stack.attrib.get('duration')) * 4,
-                              'x': float(stack.attrib['left']) / width}
+                              'x': float(stack.attrib['left']) / width, 'repeatMarks': {'left': [], 'right': []}}
+                    for side,edge in [('left',float(stack.attrib['left'])),('right',float(stack.attrib['right']))]:
+                        dots=[x for x in symbols.values() if x.tag=='repeat-dot' and x.find('bounds') is not None and abs(float(x.find('bounds').attrib['x'])-edge)<max(60,width*.03)]
+                        for staff_id in {x.attrib.get('staff') for x in dots}:
+                            boxes=[x.find('bounds').attrib for x in dots if x.attrib.get('staff')==staff_id]
+                            boxes += [x.find('bounds').attrib for x in symbols.values() if x.tag=='barline' and x.attrib.get('staff')==staff_id and x.find('bounds') is not None and abs(float(x.find('bounds').attrib['x'])-edge)<max(60,width*.03)]
+                            left=min(float(b['x']) for b in boxes)-5;top=min(float(b['y']) for b in boxes)-4;right=max(float(b['x'])+float(b['w']) for b in boxes)+5;bottom=max(float(b['y'])+float(b['h']) for b in boxes)+4
+                            record['repeatMarks'][side].append({'page':sheet_number-1,'x':left/width,'y':top/height,'width':(right-left)/width,'height':(bottom-top)/height})
                     for part in parts:
                         pmeasures = part.findall('measure')
                         if stack_index >= len(pmeasures):
@@ -114,6 +121,7 @@ def parse_result(mxl_path, omr_path, warnings=None):
     parts = [{'id': p.attrib['id'], 'name': p.findtext('part-name', p.attrib['id'])} for p in score.findall('part-list/score-part')]
     geometry, staves = _geometry(omr_path, [p['id'] for p in parts])
     events, measures, warnings = [], [], list(warnings or [])
+    repeat_specs,ending_specs={},{}
     part_measures = {p.attrib['id']: p.findall('measure') for p in score.findall('part')}
     divisions = {pid: 1 for pid in part_measures}
     time_sig = {'num': 4, 'den': 4}
@@ -129,6 +137,10 @@ def parse_result(mxl_path, omr_path, warnings=None):
             if mi >= len(pmeasures):
                 continue
             measure = pmeasures[mi]
+            for barline in measure.findall('barline'):
+                repeat=barline.find('repeat');ending=barline.find('ending')
+                if repeat is not None:repeat_specs[(mi+1,repeat.attrib['direction'])]=int(repeat.attrib.get('times','2'))
+                if ending is not None:ending_specs[(mi+1,ending.attrib.get('type','start'))]=[int(n) for n in ending.attrib.get('number','1').replace(' ','').split(',') if n.isdigit()]
             cursor, previous_onset, maximum = 0.0, 0.0, 0.0
             for element in measure:
                 if element.tag == 'attributes':
@@ -189,8 +201,25 @@ def parse_result(mxl_path, omr_path, warnings=None):
     irregular = [m['number'] for m in measures if abs(m['duration'] - m['timeSig']['num'] * 4 / m['timeSig']['den']) > 0.00001]
     if irregular:
         warnings.append(f'Measures {", ".join(map(str, irregular))} have incomplete or irregular timing. Check pickups and recognition errors.')
-    if score.findall('.//repeat') or score.findall('.//ending'):
-        warnings.append('Written repeat signs and alternate endings are present. This version plays written measures in page order; use practice loops for repetitions.')
+    repeats,repeat_marks,endings=[],[],[]
+    stack=[]
+    for mi in range(1,count+1):
+        if (mi,'forward') in repeat_specs:stack.append(mi)
+        if (mi,'backward') in repeat_specs:
+            start=stack.pop() if stack else 1
+            repeat={'id':f'repeat-{start}-{mi}','startMeasure':start,'endMeasure':mi,'times':repeat_specs[(mi,'backward')]};repeats.append(repeat)
+            for number,side in [(start,'left'),(mi,'right')]:
+                if number<=len(geometry):repeat_marks.extend(dict(mark,repeatId=repeat['id']) for mark in geometry[number-1]['repeatMarks'][side])
+    opened=None
+    for (mi,kind),numbers in sorted(ending_specs.items(),key=lambda x:(x[0][0],x[0][1]!='start')):
+        if kind=='start':opened={'startMeasure':mi,'numbers':numbers}
+        elif opened:
+            opened['endMeasure']=mi
+            region=next((r for r in reversed(repeats) if r['startMeasure']<=opened['startMeasure']<=r['endMeasure']+1),None)
+            if region:opened['repeatId']=region['id'];endings.append(opened)
+            opened=None
+    if repeats:warnings.append('Written repeat barlines are followed automatically and highlighted until the final pass. Review repeat counts and endings against the print.')
+    if score.findall('.//direction-type/segno') or score.findall('.//direction-type/coda'):warnings.append('D.S., D.C. and coda navigation needs manual practice loops.')
     missing = sum(e['midi'] is not None and e['x'] is None for e in events)
     if missing:
         warnings.append(f'{missing} pitched notes could not be positioned safely. Review them before practice.')
@@ -205,7 +234,7 @@ def parse_result(mxl_path, omr_path, warnings=None):
                     part['suggestedName'] = suggested
                 break
     return {'parts': parts, 'events': events, 'measures': measures, 'staves': staves, 'warnings': warnings,
-            'duration': absolute, 'recognition': {'engine': 'Audiveris', 'version': '5.11.0', 'reviewRequired': True}}
+            'duration': absolute, 'repeats':repeats,'repeatMarks':repeat_marks,'endings':endings, 'recognition': {'engine': 'Audiveris', 'version': '5.11.0', 'reviewRequired': True}}
 
 
 def recognize(pdf_path, pages, output_dir, progress=None, timeout=900, cancel_event=None):
@@ -271,7 +300,7 @@ def recognize(pdf_path, pages, output_dir, progress=None, timeout=900, cancel_ev
     lines = (out / 'recognition.log').read_text(errors='replace').splitlines()
     warnings = [line.split('|', 1)[-1].strip() for line in lines if line.startswith('WARN')]
     result = parse_result(mxls[0], omrs[0], warnings)
-    for item in result['events'] + result['measures']:
+    for item in result['events'] + result['measures'] + result.get('repeatMarks',[]):
         if item['page'] is not None:
             item['page'] = page_map[item['page']]
     result['staves'] = {page_map[int(page)]: rows for page, rows in result['staves'].items()}

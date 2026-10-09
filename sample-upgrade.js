@@ -1,5 +1,6 @@
 import {correctMeasure,correctNote,addNote,removeNote} from './corrections.js';
 export function upgradeSample(saved,latest){
+ if(saved&&latest.repeats&&saved.events.length>=latest.events.length&&(saved.recognition?.sampleRevision||0)<latest.recognition.sampleRevision){const result=structuredClone(saved);for(const key of ['repeats','repeatMarks','endings'])result[key]=structuredClone(latest[key]||[]);result.recognition={...result.recognition,sampleRevision:latest.recognition.sampleRevision};result.warnings=(result.warnings||[]).filter(w=>!w.includes('plays written measures in page order'));return result;}
  if(!saved||saved.recognition?.sampleRevision>=latest.recognition.sampleRevision||saved.events.length>=latest.events.length)return saved||latest;
  let score=structuredClone(latest);
  for(const part of saved.parts){const target=score.parts.find(p=>p.id===part.id);if(target&&part.name!=='Voice'){target.name=part.name;delete target.suggestedName;}}

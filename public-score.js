@@ -13,6 +13,8 @@ export function scoreForPages(source,pages){
  const score=structuredClone(full);let start=0;
  score.measures=score.measures.filter(m=>selected.has(m.page)).map((m,i)=>{mapping.set(m.number,{number:i+1,start});const next={...m,originalNumber:m.number,number:i+1,start};start+=m.duration;return next;});
  score.events=score.events.filter(n=>selected.has(n.page)&&mapping.has(n.measure)).map(n=>{const m=mapping.get(n.measure);return {...n,measure:m.number,time:m.start+n.beat};});
+ score.repeats=(full.repeats||[]).filter(r=>full.measures.filter(m=>m.number>=r.startMeasure&&m.number<=r.endMeasure).every(m=>mapping.has(m.number))).map(r=>({...r,startMeasure:mapping.get(r.startMeasure)?.number,endMeasure:mapping.get(r.endMeasure)?.number})).filter(r=>r.startMeasure&&r.endMeasure);
+ const repeatIds=new Set(score.repeats.map(r=>r.id));score.repeatMarks=(full.repeatMarks||[]).filter(m=>repeatIds.has(m.repeatId)&&selected.has(m.page));score.endings=(full.endings||[]).filter(e=>repeatIds.has(e.repeatId)&&mapping.has(e.startMeasure)&&mapping.has(e.endMeasure)).map(e=>({...e,startMeasure:mapping.get(e.startMeasure).number,endMeasure:mapping.get(e.endMeasure).number}));
  score.staves=Object.fromEntries(Object.entries(score.staves||{}).filter(([page])=>selected.has(+page)));score.duration=start;score.pageSource=full;
  if(pages.some((p,i)=>i&&p!==pages[i-1]+1))score.warnings=[...(score.warnings||[]),'Selected pages have gaps. Playback joins only the included pages.'];
  return score;

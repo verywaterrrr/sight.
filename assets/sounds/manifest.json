@@ -1,0 +1,98 @@
+{
+  "piano": [
+    {
+      "midi": 24,
+      "file": "piano-24.mp3"
+    },
+    {
+      "midi": 30,
+      "file": "piano-30.mp3"
+    },
+    {
+      "midi": 36,
+      "file": "piano-36.mp3"
+    },
+    {
+      "midi": 42,
+      "file": "piano-42.mp3"
+    },
+    {
+      "midi": 48,
+      "file": "piano-48.mp3"
+    },
+    {
+      "midi": 54,
+      "file": "piano-54.mp3"
+    },
+    {
+      "midi": 60,
+      "file": "piano-60.mp3"
+    },
+    {
+      "midi": 66,
+      "file": "piano-66.mp3"
+    },
+    {
+      "midi": 72,
+      "file": "piano-72.mp3"
+    },
+    {
+      "midi": 78,
+      "file": "piano-78.mp3"
+    },
+    {
+      "midi": 84,
+      "file": "piano-84.mp3"
+    },
+    {
+      "midi": 90,
+      "file": "piano-90.mp3"
+    }
+  ],
+  "female": [
+    {
+      "midi": 67,
+      "file": "female-67.wav",
+      "tune": 16.0,
+      "gain": 0.5050838706821427
+    },
+    {
+      "midi": 72,
+      "file": "female-72.wav",
+      "tune": -9.0,
+      "gain": 0.453131861268491
+    },
+    {
+      "midi": 79,
+      "file": "female-79.wav",
+      "tune": 11.0,
+      "gain": 0.4932403531190693
+    }
+  ],
+  "male": [
+    {
+      "midi": 43,
+      "file": "male-43.wav",
+      "tune": 1.0,
+      "gain": 0.45686085689979883
+    },
+    {
+      "midi": 48,
+      "file": "male-48.wav",
+      "tune": 1.0,
+      "gain": 0.40567458448045624
+    },
+    {
+      "midi": 55,
+      "file": "male-55.wav",
+      "tune": 11.0,
+      "gain": 0.6270769682831565
+    },
+    {
+      "midi": 60,
+      "file": "male-60.wav",
+      "tune": 0.0,
+      "gain": 0.5188732121894721
+    }
+  ]
+}

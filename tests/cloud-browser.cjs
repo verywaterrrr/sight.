@@ -24,7 +24,7 @@ const assert=require('node:assert/strict');
   await page.locator('#finish-review').click();await ready();
   const result=await page.evaluate(async()=>{const {library}=await import('./storage.js');const record=await library.get(localStorage.getItem('sight-last-score'));const s=record.score;return {parts:s.parts.length,events:s.events.length,mapped:s.events.filter(n=>n.x!=null&&n.y!=null).length,pages:record.pages,seconds:s.recognition.seconds};});
   assert.deepEqual(result.pages,pages.map(n=>n-1));assert.ok(result.events>50);assert.ok(result.mapped>50);assert.ok(await page.locator('[data-note]').count()>20);
-  await page.locator('#play-button').click();assert.equal(await page.locator('#play-button').getAttribute('aria-label'),'Pause score');await page.locator('#stop-button').click();
+  await page.locator('#play-button').click();await page.waitForFunction(()=>document.querySelector('#play-button').getAttribute('aria-label')==='Pause score');assert.equal(await page.locator('#play-button').getAttribute('aria-label'),'Pause score');await page.locator('#stop-button').click();
   await page.reload();await ready();assert.match(await page.locator('#score-status').textContent(),/Recognised/);assert.ok(await page.locator('[data-note]').count()>20);
   assert.deepEqual(errors,[]);console.log('PASS: selected-page PDF upload, actual recognition, review, mapped notes, playback and saved reload.',JSON.stringify(result));
  }finally{await browser.close();}

@@ -50,7 +50,7 @@ def worker(job,data,pages,key):
             score=recognize(input_file,list(range(len(pages))),directory/'output',**kwargs)
             for event in score['events']:
                 if event.get('page') is not None:event['page']=pages[event['page']]
-            for measure in score['measures']:
+            for measure in score['measures']+score.get('repeatMarks',[]):
                 if measure.get('page') is not None:measure['page']=pages[measure['page']]
             score['staves']={str(pages[int(k)]):v for k,v in score['staves'].items()}
             score['recognition']['selectedPages']=pages
@@ -123,7 +123,7 @@ class Handler(SimpleHTTPRequestHandler):
             reader=PdfReader(io.BytesIO(data))
             if reader.is_encrypted:raise ValueError('Password-protected PDFs are not supported.')
             if len(reader.pages)!=len(pages):raise ValueError('Submitted PDF must contain only the selected pages.')
-            key=hashlib.sha256(data+json.dumps(pages).encode()+b'Audiveris-5.11-provider-v2').hexdigest()
+            key=hashlib.sha256(data+json.dumps(pages).encode()+b'Audiveris-5.11-provider-v3').hexdigest()
             job={'id':uuid.uuid4().hex,'status':'queued','message':'Waiting to process selected pages.','cancel':threading.Event(),'createdAt':time.time(),'cacheKey':key}
             with LOCK:
                 JOBS[job['id']]=job
