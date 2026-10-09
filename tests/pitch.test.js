@@ -1,0 +1,6 @@
+import {test} from 'node:test';import assert from 'node:assert/strict';import {detectPitch,pitchVerdict} from '../pitch.js';
+const sine=f=>Float32Array.from({length:4096},(_,i)=>.2*Math.sin(2*Math.PI*f*i/48000));
+test('detects vocal fundamentals from bass through soprano',()=>{for(const f of [82.41,196,392,880]){const p=detectPitch(sine(f),48000);assert.ok(p&&Math.abs(1200*Math.log2(p.frequency/f))<8,`frequency ${f}`);}});
+test('silence and uncertain detections stay neutral',()=>{assert.equal(detectPitch(new Float32Array(4096),48000),null);assert.equal(pitchVerdict(null,67).kind,'neutral');assert.equal(pitchVerdict({frequency:392,clarity:.4},67).kind,'neutral');});
+test('direction indicates how the singer should correct a pitch',()=>{assert.equal(pitchVerdict({frequency:415,clarity:.98},67).direction,'lower');assert.equal(pitchVerdict({frequency:370,clarity:.98},67).direction,'higher');assert.equal(pitchVerdict({frequency:392,clarity:.98},67).kind,'good');});
+test('frequency overlap with audible accompaniment produces neutral feedback',()=>{const tone={frequency:440,clarity:.99};const v=pitchVerdict(tone,69,{audibleMidi:[69]});assert.equal(v.kind,'neutral');assert.equal(v.reason,'speaker');assert.equal(pitchVerdict(tone,69,{audibleMidi:[60]}).kind,'good');assert.equal(pitchVerdict({frequency:660,clarity:.99},76,{audibleMidi:[57]}).kind,'neutral');});

@@ -1,0 +1,27 @@
+# Local processing, uploads and trust material
+.runtime/
+assets/united-in-purpose.pdf
+assets/recognized-sample.json
+assets/sight-local-ca.cer
+assets/sight-ipad.mobileconfig
+assets/local-*
+*.key
+*.pem
+*.cer
+*.mobileconfig
+.env
+.env.*
+# Generated or personal development evidence
+screenshots/
+dist/
+node_modules/
+.venv/
+__pycache__/
+*.pyc
+.DS_Store
+sample-staves.js
+docs/development-*.md
+docs/implementation-ledger.md
+# Private score-specific evidence stays local, including exact extracted notes.
+docs/research/
+tests/recognition.test.py

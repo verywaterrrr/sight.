@@ -1,0 +1,5 @@
+let dbPromise;
+function open(){if(!dbPromise)dbPromise=new Promise((resolve,reject)=>{const r=indexedDB.open('sight-practice',1);r.onupgradeneeded=()=>r.result.createObjectStore('scores',{keyPath:'id'});r.onsuccess=()=>resolve(r.result);r.onerror=()=>reject(r.error);});return dbPromise;}
+async function transaction(mode,action){const db=await open();return new Promise((resolve,reject)=>{const tx=db.transaction('scores',mode);let req;try{req=action(tx.objectStore('scores'));}catch(e){reject(e);return;}tx.oncomplete=()=>resolve(req?.result);tx.onerror=()=>reject(tx.error);tx.onabort=()=>reject(tx.error);});}
+export const library={list:()=>transaction('readonly',s=>s.getAll()),get:id=>transaction('readonly',s=>s.get(id)),put:record=>transaction('readwrite',s=>s.put({...record,updated:Date.now()})),remove:id=>transaction('readwrite',s=>s.delete(id))};
+export async function scoreId(bytes){const digest=await crypto.subtle.digest('SHA-256',bytes);return [...new Uint8Array(digest)].map(n=>n.toString(16).padStart(2,'0')).join('');}

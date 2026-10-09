@@ -1,0 +1,11 @@
+{
+  "name": "sight",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "node server/start.cjs",
+    "test": "node --test tests/*.test.js",
+    "dev:https": "node server/https.cjs",
+    "build:pages": "node scripts/build-pages.mjs"
+  }
+}

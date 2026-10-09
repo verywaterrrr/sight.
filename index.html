@@ -1,0 +1,73 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#eef0eb"><title>Sight — Choir practice</title>
+  <link rel="icon" href="assets/favicon.svg" type="image/svg+xml"><link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <header class="app-header">
+    <button class="brand" id="library-button" aria-label="Open score library"><span class="brand-icon">♮</span><span><b>sight<span class="brand-dot">.</span></b><small>CHOIR PRACTICE</small></span></button>
+    <div class="score-heading"><h1 id="score-title">Morning Practice</h1><p id="score-subtitle">Original exercise <span>·</span> SATB & piano</p></div>
+    <div class="header-actions"><span class="preview-badge">Practice</span><button class="button upload-button" id="upload-button"><span data-icon="upload"></span><span>Add score</span></button></div>
+  </header>
+  <main id="practice">
+    <div class="reading-bar">
+      <div class="reading-left"><span class="score-type">SCORE</span><span id="reading-position">Pages 1–2 of 4</span><span class="small-divider"></span><span id="mode-label">All voices</span></div>
+      <div class="reading-actions"><button class="text-button review-access" id="recognise-button">Recognise pages</button><button class="text-button review-access" id="review-button">Review notes</button><span class="small-divider"></span><button class="icon-button" id="zoom-out" aria-label="Zoom out" data-icon="minus"></button><button id="zoom-reset" class="zoom-label" aria-label="Reset zoom">Fit</button><button class="icon-button" id="zoom-in" aria-label="Zoom in" data-icon="plus"></button></div>
+    </div>
+    <section class="score-stage" id="score-stage" aria-label="Score pages"><div class="page-spread" id="page-spread"><div class="score-loading"><span class="loading-spinner"></span><span>Opening your score…</span></div></div></section>
+    <div class="score-footer"><span><span class="status-dot"></span><span id="score-status">Original PDF · recognition ready</span></span><div class="page-nav"><button class="icon-button" id="previous-page" aria-label="Previous page" data-icon="chevron-left"></button><span id="page-count">1–2 <span>/ 4</span></span><button class="icon-button" id="next-page" aria-label="Next page" data-icon="chevron-right"></button></div><span class="footer-hint" id="practice-hint">Tap a note to start singing</span></div>
+  </main>
+  <div class="mode-message" id="mode-message" hidden></div>
+  <div class="count-in" id="count-in" hidden><small>COUNT IN</small><strong>1</strong></div>
+  <div class="transport-wrap"><div class="transport" aria-label="Practice controls">
+    <div class="playback-controls"><button class="play-button" id="play-button" aria-label="Play score"><span data-icon="play"></span></button><button class="icon-button stop-button" id="stop-button" aria-label="Stop score" data-icon="stop"></button></div>
+    <span class="transport-divider"></span>
+    <div class="tempo-control"><span class="tempo-caption">TEMPO</span><div><button id="bpm-down" class="tempo-step" aria-label="Decrease tempo">−</button><input type="number" id="score-bpm" value="92" min="30" max="240" aria-label="Score BPM"><button id="bpm-up" class="tempo-step" aria-label="Increase tempo">+</button><span class="bpm-unit">BPM</span></div></div>
+    <span class="transport-divider"></span>
+    <div class="practice-tools"><button class="tool-button" id="rhythm-button" aria-pressed="false"><span data-icon="rhythm"></span><span>Rhythm</span></button><button class="tool-button" id="loop-button" aria-pressed="false"><span data-icon="loop"></span><span>Loop</span></button><button class="tool-button" id="monitor-button" aria-pressed="false"><span data-icon="mic"></span><span>Monitor</span></button></div>
+    <span class="transport-divider"></span><button class="tool-button metro-tool" id="metronome-button" aria-expanded="false"><span data-icon="metronome"></span><span>Metronome</span></button>
+  </div><div class="transport-note"><span class="beat-indicator" id="beat-indicator"><i></i><i></i><i></i><i></i></span><span>Beat always on</span><span class="transport-note-divider">·</span><span id="transport-note-text">A little practice, a little progress.</span></div></div>
+
+  <aside class="drawer" id="metronome-drawer" aria-label="Metronome" hidden>
+    <div class="drawer-header"><div><span class="eyebrow">YOUR PRACTICE TOOLKIT</span><h2>Metronome</h2></div><button class="icon-button" data-close="metronome-drawer" aria-label="Close metronome" data-icon="close"></button></div>
+    <p class="drawer-description">Find your pulse. Keep your own pace.</p>
+    <div class="metro-dial"><span id="metro-bpm-display">92</span><small>BEATS PER MINUTE</small></div>
+    <div class="metro-slider"><button class="icon-button" id="metro-minus" aria-label="Decrease metronome BPM" data-icon="minus"></button><input type="range" id="metro-bpm" min="30" max="240" value="92" aria-label="Metronome BPM"><button class="icon-button" id="metro-plus" aria-label="Increase metronome BPM" data-icon="plus"></button></div>
+    <div class="metro-beats" id="metro-beats"><i></i><i></i><i></i><i></i></div>
+    <div class="settings-row"><label for="metro-metre">Time signature</label><select id="metro-metre"><option>2/4</option><option>3/4</option><option selected>4/4</option><option>6/8</option><option>5/4</option><option>7/8</option></select></div>
+    <div class="settings-row"><label for="metro-tone">Click sound</label><select id="metro-tone"><option value="bright">Bright click</option><option value="wood">Woodblock</option><option value="bell">Bell</option></select></div>
+    <div class="settings-row"><label for="metro-accent">Accent first beat<small>A distinct sound on beat one</small></label><input class="switch" id="metro-accent" type="checkbox" checked></div>
+    <div class="settings-row volume-row"><label for="metro-volume">Volume</label><input type="range" id="metro-volume" min="0" max="100" value="65"></div>
+    <button class="button primary wide" id="metro-start"><span data-icon="play"></span>Start metronome</button><p class="panel-footnote">Independent of score tempo and playback.</p>
+  </aside>
+
+  <aside class="drawer monitor-drawer" id="monitor-drawer" aria-label="Voice monitor" hidden>
+    <div class="drawer-header"><div><span class="eyebrow">LISTEN TO YOUR PROGRESS</span><h2>Voice monitor</h2></div><button class="icon-button" data-close="monitor-drawer" aria-label="Close voice monitor" data-icon="close"></button></div>
+    <p class="drawer-description">Your voice, with a clear reference.</p>
+    <div class="settings-row"><label for="monitor-part">I'm singing</label><select id="monitor-part"><option value="soprano">Soprano</option><option value="alto">Alto</option><option value="tenor">Tenor</option><option value="bass">Bass</option></select></div>
+    <button class="text-button" id="monitor-mute-part">Mute my part in accompaniment</button><div class="pitch-readout"><div><small>TARGET NOTE</small><strong id="target-pitch">G4</strong></div><span class="pitch-verdict" id="pitch-verdict">Ready to sing</span></div>
+    <div class="pitch-chart"><span class="trace-label">HIGHER</span><canvas id="pitch-trace" aria-label="Moving pitch trace preview"></canvas><span class="trace-label">LOWER</span><span class="trace-caption"><i></i> Target <i class="voice-key"></i> Your voice</span></div>
+    <div class="pitch-legend"><span><i class="green"></i>In tune</span><span><i class="amber"></i>Adjust</span><span><i class="red"></i>Off pitch</span></div>
+    <div class="preview-notice"><span data-icon="info"></span><p><b>Live, on-device analysis</b>Your microphone audio stays on this device. Notes that overlap with audible accompaniment stay neutral. Mute your part for clearer feedback; iPad speaker testing is still pending.</p></div>
+    <button class="button primary wide" id="monitor-demo"><span data-icon="mic"></span>Start monitoring</button><p class="panel-footnote">Designed for iPad speakers + microphone.</p>
+  </aside>
+
+  <dialog id="import-dialog" class="large-dialog">
+    <div class="dialog-header"><div><span class="eyebrow">MAKE IT YOUR PRACTICE</span><h2>Choose your pages</h2><p id="import-filename">Morning Practice.pdf</p></div><button class="icon-button" id="close-import" aria-label="Close page selection" data-icon="close"></button></div>
+    <div class="import-toolbar"><span id="selection-count">15 pages selected</span><div><button class="text-button" id="select-all">Select all</button><span>·</span><button class="text-button" id="select-none">Clear</button></div></div>
+    <div class="thumbnail-grid" id="thumbnail-grid"></div>
+    <div class="dialog-footer"><p>Only your selected pages will be included.<small id="import-instruction">Pitches, rhythm, and note positions will be recognised. Review the result before practice.</small></p><button class="button primary" id="import-continue">Recognise selected pages <span data-icon="arrow-right"></span></button></div>
+  </dialog>
+  <dialog id="page-preview-dialog" class="page-preview-dialog"><button class="icon-button" id="close-page-preview" aria-label="Close page preview" data-icon="close"></button><div id="page-preview-content"></div></dialog>
+  <dialog id="library-dialog" class="library-dialog"><div class="dialog-header"><div><span class="eyebrow">A PLACE FOR YOUR MUSIC</span><h2>Your scores</h2></div><button class="icon-button" id="close-library" aria-label="Close library" data-icon="close"></button></div><button class="library-score" id="open-sample"><div class="library-cover"><span>MORNING<br>PRACTICE</span><small>SATB & PIANO</small><span class="cover-staff">♫</span></div><div><b>Morning Practice</b><span>Original exercise · 4 pages</span><small>Original practice score · 4 pages</small></div><span data-icon="arrow-right"></span></button><button class="button wide" id="library-upload"><span data-icon="upload"></span>Upload another PDF</button><div id="saved-scores"></div><p class="panel-footnote" id="ipad-local-guide"><a href="connect-ipad.html" target="_blank">Connect your iPad for microphone practice</a></p><p class="panel-footnote" id="library-privacy">PDFs, corrections, and practice settings are saved in this browser. Selected pages are processed and cached on the connected computer.</p></dialog>
+  <dialog id="review-dialog" class="review-dialog">
+    <div class="dialog-header"><div><span class="eyebrow">A SMALL CHECK BEFORE YOU SING</span><h2>Review your score</h2><p>Check uncertain notes and suggested voice names before practice.</p></div><button class="icon-button" id="close-review" aria-label="Close review" data-icon="close"></button></div>
+    <details id="review-warning-panel" class="review-warning-panel" open><summary>Recognition warnings</summary><ul id="review-warnings"></ul></details><div class="review-layout"><div class="review-page" id="review-page"></div><aside class="review-inspector"><div class="settings-row"><label for="review-page-picker">Page</label><select id="review-page-picker"></select></div><div class="settings-row"><label for="review-note-picker">Note or rest</label><select id="review-note-picker"></select></div><button class="button wide" id="review-next-uncertain">Next flagged note</button><span class="review-status">NOTE CORRECTION</span><h3>Check this note</h3><p>Tap a note to inspect its pitch, rhythm, and voice.</p><div class="settings-row"><label for="review-part">Voice part</label><select id="review-part"><option value="soprano">Soprano</option><option value="alto">Alto</option><option value="tenor">Tenor</option><option value="bass">Bass</option></select></div><div class="settings-row"><label for="review-part-name">Part name</label><input id="review-part-name" maxlength="40" aria-label="Part name"></div><div class="settings-row"><label for="review-pitch">Pitch</label><select id="review-pitch"><option value="rest">Rest</option></select></div><div class="settings-row"><label for="review-onset">Onset<small>Quarter beats from bar start</small></label><input id="review-onset" type="number" min="0" step="0.25" value="0"></div><div class="settings-row"><label for="review-duration">Duration</label><select id="review-duration"><option value="0.25">Sixteenth</option><option value="0.5">Eighth</option><option value="1">Quarter</option><option value="1.5">Dotted quarter</option><option value="2">Half</option><option value="3">Dotted half</option><option value="4">Whole</option></select></div><p class="review-location" id="review-location"></p><div class="review-edit-actions"><button class="text-button" id="review-add">Add missing note</button><button class="text-button" id="review-place">Place this note</button><button class="text-button" id="review-remove">Remove note</button><button class="text-button" id="review-undo" disabled>Undo</button></div><button class="button primary wide" id="apply-correction">Apply correction</button><p class="panel-footnote">Corrections are saved on this device and applied to playback.</p><details class="bar-editor"><summary>Bar timing &amp; metre</summary><div class="settings-row"><label for="review-bar">Bar</label><select id="review-bar"></select></div><div class="settings-row"><label for="review-metre-num">Time signature</label><div class="metre-fields"><input id="review-metre-num" type="number" min="1" max="32"><span>/</span><select id="review-metre-den"><option>2</option><option selected>4</option><option>8</option><option>16</option></select></div></div><div class="settings-row"><label for="review-bar-length">Bar length<small>Quarter beats, including pickups</small></label><input id="review-bar-length" type="number" min="0.0625" step="0.25"></div><button class="button wide" id="review-apply-bar">Apply bar timing</button></details></aside></div>
+    <div class="dialog-footer"><p id="review-summary">Review the sample, then return to practice.</p><button class="button primary" id="finish-review">Back to practice <span data-icon="arrow-right"></span></button></div>
+  </dialog>
+  <dialog id="recognition-dialog" class="recognition-dialog"><span class="eyebrow">PREPARING YOUR MUSIC</span><h2>Reading the score</h2><span class="loading-spinner"></span><p id="recognition-message">Preparing selected pages…</p><p class="panel-footnote">Complex pages can take a minute or more. You can cancel and retry.</p><button class="button" id="cancel-recognition">Cancel recognition</button></dialog><div id="toast" class="toast" role="status" hidden></div><input type="file" id="pdf-file" accept=".pdf,application/pdf" hidden>
+  <script type="module" src="app.js"></script>
+</body>
+</html>

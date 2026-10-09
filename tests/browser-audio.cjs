@@ -1,0 +1,18 @@
+const {chromium}=require('./browser-runtime.cjs');const assert=require('node:assert/strict');const path=require('node:path');
+(async()=>{const browser=await chromium.launch({headless:true,executablePath:'/Applications/Google Chrome.app/Contents/MacOS/Google Chrome',args:['--use-fake-ui-for-media-stream','--use-fake-device-for-media-stream',`--use-file-for-fake-audio-capture=${path.resolve('tests/fixtures/a4.wav')}`]});try{
+ const page=await browser.newPage();await page.goto('http://localhost:5173');
+ const result=await page.evaluate(async()=>{
+  const {ScorePlayer}=await import('/audio.js');const {detectPitch,VoiceTracker}=await import('/pitch.js');
+  const score={parts:[{id:'S',name:'Soprano'}],events:[{id:'a',part:'S',midi:69,time:0,duration:1,measure:1,beat:0}],measures:[{number:1,start:0,duration:4,timeSig:{num:4,den:4}}]};
+  async function render(selected,mode){const ctx=new OfflineAudioContext(1,48000*2.2,48000);let clock=0;const starts=[];const adapter={get currentTime(){return clock},destination:ctx.destination,resume(){},createGain:()=>ctx.createGain(),createOscillator:()=>{const o=ctx.createOscillator();const start=o.start.bind(o);o.start=t=>{starts.push({time:t,frequency:o.frequency.value});start(t)};return o;}};
+   const p=new ScorePlayer(adapter,{selection:()=>new Set(selected),mode:()=>mode});p.play(score,0,{bpm:120,countIn:false,loop:{start:0,end:1}});clearInterval(p.timer);for(clock=.025;clock<2;clock+=.025)p.pump();const output=await ctx.startRendering();p.stop();const data=output.getChannelData(0);const central=data.slice(48000*.18,48000*.18+4096);const pitch=detectPitch(central,48000);const rms=Math.sqrt(central.reduce((s,x)=>s+x*x,0)/central.length);let loopDifference=0;for(let i=48000*.18;i<48000*.4;i++)loopDifference+=(data[i]-data[i+24000])**2;
+   return {pitch: pitch?.frequency??null,rms,starts,loopDifference,firstClickPeak:Math.max(...data.slice(2640,4300).map(Math.abs))};
+  }
+  const notes=await render(['S'],'notes'),muted=await render([],'notes'),rhythm=await render(['S'],'rhythm');
+  const ctx=new AudioContext();let frames=[];const tracker=new VoiceTracker(ctx,p=>{if(p)frames.push(p)});await tracker.start();await new Promise(resolve=>setTimeout(resolve,1000));const stream=tracker.stream;tracker.stop();const tracksStopped=stream.getTracks().every(t=>t.readyState==='ended');const frequencies=frames.map(f=>f.frequency).sort((a,b)=>a-b);await ctx.close();
+  return {notes,muted,rhythm,mic:{frames:frames.length,frequency:frequencies[Math.floor(frequencies.length/2)],tracksStopped}};
+ });
+ assert.ok(Math.abs(result.notes.pitch-440)<1,result.notes.pitch);assert.ok(result.notes.loopDifference<1e-6);const starts=result.notes.starts.filter(n=>n.frequency===440);assert.ok(starts.length>=4);for(let i=1;i<starts.length;i++)assert.ok(Math.abs(starts[i].time-starts[i-1].time-.5)<1e-9);
+ assert.ok(result.muted.rms<1e-8);assert.ok(result.muted.firstClickPeak>.03);assert.ok(result.rhythm.rms<1e-8);assert.ok(!result.rhythm.starts.some(n=>n.frequency===440));assert.ok(result.rhythm.starts.some(n=>n.frequency===800));assert.ok(result.mic.frames>3);assert.ok(Math.abs(result.mic.frequency-440)<1);assert.ok(result.mic.tracksStopped);
+ console.log('PASS: real Web Audio rendering contains A4; loop waveforms repeat at exact boundaries; muted parts preserve beats; rhythm has taps without pitched notes; browser microphone pipeline detects a known 440Hz WAV and releases tracks.');console.log(JSON.stringify({pitchHz:result.notes.pitch,loopDifference:result.notes.loopDifference,microphone:result.mic}));
+}finally{await browser.close();}})().catch(e=>{console.error(e);process.exit(1)});

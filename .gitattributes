@@ -1,0 +1,5 @@
+*.pdf binary
+*.otf binary
+*.wav binary
+vendor/* linguist-vendored whitespace=-blank-at-eol
+scripts/fonts/OFL.txt whitespace=-blank-at-eol
