@@ -16,16 +16,14 @@ MAX_JOBS=int(os.environ.get('SIGHT_MAX_PENDING_JOBS','4'))
 MAX_PAGES=int(os.environ.get('SIGHT_MAX_PAGES','100'))
 JOB_TTL=3600
 CACHE_TTL=86400
-
-def queue_available():
-    return sum(j['status'] in ('queued','running') for j in JOBS.values()) < MAX_JOBS
+SLOTS=threading.BoundedSemaphore(MAX_JOBS)
 
 def cleanup():
     now=time.time()
     with LOCK:
         for key,job in list(JOBS.items()):
-            if job['status'] not in ('queued','running') and now-job.get('createdAt',now)>JOB_TTL:del JOBS[key]
-        active={j.get('cacheKey') for j in JOBS.values() if j['status'] in ('queued','running')}
+            if job['status'] not in ('queued','running') and now-job.get('finishedAt',now)>JOB_TTL:del JOBS[key]
+        active={j.get('cacheKey') for j in JOBS.values() if not j.get('finishedAt')}
     for directory in CACHE.iterdir():
         if directory.is_dir() and directory.name not in active and now-directory.stat().st_mtime>CACHE_TTL:shutil.rmtree(directory,ignore_errors=True)
 
@@ -36,8 +34,8 @@ def housekeeping():
         time.sleep(60)
 
 def worker(job,data,pages,key):
-    directory=CACHE/key;directory.mkdir(exist_ok=True);os.utime(directory,None)
     try:
+        directory=CACHE/key;directory.mkdir(exist_ok=True);os.utime(directory,None)
         if job['cancel'].is_set(): return
         result_file=directory/'score.json'
         if result_file.exists():
@@ -61,6 +59,9 @@ def worker(job,data,pages,key):
             if not job['cancel'].is_set():job.update(status='done',message='Ready for review.',score=score)
     except Exception as error:
         with LOCK:job.update(status='cancelled' if job['cancel'].is_set() else 'error',error=str(error),message=str(error))
+    finally:
+        with LOCK:job['finishedAt']=time.time()
+        SLOTS.release()
 
 class Handler(SimpleHTTPRequestHandler):
     def __init__(self,*a,**kw):super().__init__(*a,directory=str(ROOT),**kw)
@@ -87,7 +88,7 @@ class Handler(SimpleHTTPRequestHandler):
             if (ROOT/'assets/united-in-purpose.pdf').is_file() and (ROOT/'assets/recognized-sample.json').is_file():
                 config['sample']={'id':'united-in-purpose','title':'United in Purpose','subtitle':'Rollo Dilworth · SATB & piano','pdf':'./assets/united-in-purpose.pdf','score':'./assets/recognized-sample.json','description':'Private testing score · 15 pages','cover':'UNITED\nIN PURPOSE'}
             return self.send_json(config)
-        if path=='/api/health':return self.send_json({'recognition':available(),'maxUploadBytes':LIMIT})
+        if path=='/api/health':return self.send_json({'recognition':available(),'maxUploadBytes':LIMIT},503 if os.environ.get('RAILWAY_PROJECT_ID') and not available() else 200)
         if path.startswith('/api/jobs/'):
             with LOCK:
                 job=JOBS.get(path.rsplit('/',1)[-1]);data={k:v for k,v in job.items() if k not in ('cancel','cacheKey')} if job else None
@@ -102,6 +103,12 @@ class Handler(SimpleHTTPRequestHandler):
         parsed=urlparse(self.path)
         if parsed.path!='/api/jobs':return self.send_json({'error':'Unknown endpoint.'},404)
         if not available():return self.send_json({'error':'Recognition engine unavailable. Run the documented local setup.'},503)
+        # Reserve capacity before reading a body. Cancelled queued jobs retain their
+        # slot until the worker discards their bytes, so cancellation cannot grow memory.
+        if not SLOTS.acquire(blocking=False):
+            self.close_connection=True
+            return self.send_json({'error':'Recognition is busy. Please retry shortly.'},429)
+        submitted=False
         try:
             if self.headers.get('Content-Type','').split(';')[0]!='application/pdf':raise ValueError('Upload a PDF.')
             length=int(self.headers.get('Content-Length',0))
@@ -119,12 +126,13 @@ class Handler(SimpleHTTPRequestHandler):
             key=hashlib.sha256(data+json.dumps(pages).encode()+b'Audiveris-5.11-provider-v2').hexdigest()
             job={'id':uuid.uuid4().hex,'status':'queued','message':'Waiting to process selected pages.','cancel':threading.Event(),'createdAt':time.time(),'cacheKey':key}
             with LOCK:
-                if not queue_available():return self.send_json({'error':'Recognition is busy. Please retry shortly.'},429)
                 JOBS[job['id']]=job
-            POOL.submit(worker,job,data,pages,key)
+            POOL.submit(worker,job,data,pages,key);submitted=True
             return self.send_json({'id':job['id']},202)
         except (ValueError,ImportError) as error:return self.send_json({'error':str(error)},400)
         except Exception:return self.send_json({'error':'Could not read this PDF.'},400)
+        finally:
+            if not submitted:SLOTS.release()
     def do_DELETE(self):
         if not self.origin_allowed():return self.send_json({'error':'This browser origin is not allowed.'},403)
         if not urlparse(self.path).path.startswith('/api/jobs/'):return self.send_json({'error':'Unknown endpoint.'},404)
