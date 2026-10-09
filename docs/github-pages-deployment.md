@@ -21,3 +21,7 @@ Pre-publication review found exact supplied-score pitch/duration/coordinate evid
 - The remote tracked tree excludes private score artifacts/evidence. The website returns404 for local trust material.
 
 New source pushes to main redeploy both GitHub Pages and Railway automatically. The initial publication above used viewing-only imports; Railway adds hosted recognition. Physical microphone/speaker behaviour remains pending.
+
+## Hosted recognition — 9 October 2026
+
+The Railway service follows the linked repository main branch and provides automatic PDF recognition for both public URLs. An actual choir PDF selected-page upload passed from GitHub Pages through the HTTPS API, followed by review, mapped notes, playback and saved reload. The unit suite now has 34 passing tests. Runtime dependencies, uploaded PDFs and private development fixtures remain excluded from the public repository.

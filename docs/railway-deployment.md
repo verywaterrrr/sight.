@@ -47,4 +47,4 @@ Audiveris is a separate AGPLv3 executable installed from its official release. I
 
 ## Deployment evidence — 9 October 2026
 
-GitHub source connection, Linux container build, effective 512 MB Java heap, engine startup and Railway health check passed. A real two-page choir PDF browser upload produced five parts and positioned notes, followed by review, playback and persisted reload. GitHub Pages cross-origin verification is performed after the endpoint configuration is deployed.
+GitHub source connection, Linux container build, effective 512 MB Java heap, engine startup and Railway health check passed. A real two-page choir PDF browser upload produced five parts and positioned notes, followed by review, playback and persisted reload. The same workflow passed from the actual GitHub Pages origin through the Railway HTTPS API. The original-demo browser check passed with recognition enabled, including page filtering/reinclusion and persisted corrections; demo page changes reuse authored notation.
