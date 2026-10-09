@@ -262,6 +262,9 @@ def recognize(pdf_path, pages, output_dir, progress=None, timeout=900, cancel_ev
                 pass
     mxls, omrs = sorted(out.glob('*.mxl')), sorted(out.glob('*.omr'))
     if run.returncode or not mxls or not omrs:
+        if os.environ.get('RAILWAY_PROJECT_ID'):
+            print('Audiveris failed, exit code:',run.returncode,flush=True)
+            print('\n'.join((out / 'recognition.log').read_text(errors='replace').splitlines()[-80:]),flush=True)
         raise RuntimeError('Recognition could not export a score. Inspect recognition.log and retry with a clean score PDF.')
     if len(mxls) != 1:
         raise RuntimeError('Selected pages exported as multiple movements. Select a continuous passage or import movements separately.')
