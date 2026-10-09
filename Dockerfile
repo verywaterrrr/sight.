@@ -3,7 +3,7 @@ ENV DEBIAN_FRONTEND=noninteractive PYTHONUNBUFFERED=1 PORT=8080 \
     AUDIVERIS_CLI=/opt/audiveris/bin/Audiveris \
     TESSDATA_PREFIX=/opt/tessdata \
     JAVA_TOOL_OPTIONS="-Djava.awt.headless=true -Xmx512m -XX:ActiveProcessorCount=1 -XX:+UseSerialGC" \
-    OMP_THREAD_LIMIT=1
+    OMP_THREAD_LIMIT=1 GDK_SCALE=1
 RUN apt-get update && apt-get install -y --no-install-recommends python3 python3-venv curl ca-certificates fontconfig fonts-dejavu-core libgomp1 shared-mime-info \
     && curl -fL https://github.com/Audiveris/audiveris/releases/download/5.11.0/Audiveris-5.11.0-ubuntu24.04-x86_64.deb -o /tmp/audiveris.deb \
     && echo 'f20113aaa33b3149ec8d6a09b2a7963360e65fafd92d69389987a85bbc3ec7a3  /tmp/audiveris.deb' | sha256sum -c - \
@@ -18,6 +18,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends python3 python3
 WORKDIR /app
 COPY . .
 RUN test -x "$AUDIVERIS_CLI" \
-    && /opt/audiveris/lib/runtime/bin/java $(sed -n '/^java-options=-Xm/s/^java-options=//p' /opt/audiveris/lib/app/Audiveris.cfg) -XX:+PrintFlagsFinal -version 2>&1 | grep -E 'MaxHeapSize[[:space:]]*=[[:space:]]*536870912'
+    && /opt/audiveris/lib/runtime/bin/java $(sed -n '/^java-options=-Xm/s/^java-options=//p' /opt/audiveris/lib/app/Audiveris.cfg) -XX:+PrintFlagsFinal -version 2>&1 | grep -E 'MaxHeapSize[[:space:]]*=[[:space:]]*536870912' \
+    && "$AUDIVERIS_CLI" -batch -help
 EXPOSE 8080
 CMD ["/opt/venv/bin/python3", "server/service.py"]
