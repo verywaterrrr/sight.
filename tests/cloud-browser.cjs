@@ -19,7 +19,7 @@ const assert=require('node:assert/strict');
   for(const number of pages)await page.getByRole('button',{name:`Include page ${number}`,exact:true}).click();
   await page.locator('#import-continue').click();await page.locator('#recognition-dialog[open]').waitFor();
   let last='';const timer=setInterval(async()=>{const message=await page.locator('#recognition-message').textContent().catch(()=>null);if(message&&message!==last){last=message;console.log(message);}},15000);
-  try{await page.locator('#review-dialog[open]').waitFor({timeout:600000});}catch(error){console.error('Recognition result:',await page.locator('#toast').textContent());throw error;}finally{clearInterval(timer);}
+  try{await page.waitForFunction(()=>document.querySelector('#review-dialog').open||(!document.querySelector('#recognition-dialog').open&&!document.querySelector('#toast').hidden),{},{timeout:600000});assert.equal(await page.locator('#review-dialog').evaluate(d=>d.open),true);}catch(error){console.error('Recognition result:',await page.locator('#toast').textContent());throw error;}finally{clearInterval(timer);}
   assert.ok(await page.locator('#review-part option').count()>=4);
   await page.locator('#finish-review').click();await ready();
   const result=await page.evaluate(async()=>{const {library}=await import('./storage.js');const record=await library.get(localStorage.getItem('sight-last-score'));const s=record.score;return {parts:s.parts.length,events:s.events.length,mapped:s.events.filter(n=>n.x!=null&&n.y!=null).length,pages:record.pages,seconds:s.recognition.seconds};});
