@@ -11,3 +11,13 @@ The build uses an explicit allowlist, relative asset paths and GitHub's Pages ar
 Verification gates: 33 unit tests; public build contents; browser subpath, demo playback and PDF-only import; repository public visibility; Pages deployment status; actual hosted browser checks. Physical iPad singing/speaker behaviour remains pending.
 
 Pre-publication review found exact supplied-score pitch/duration/coordinate evidence in a research note and fixture test. Both remain local and are excluded from the initial public history. No other blocker was found. Previously reviewed app/vendor architecture, local recognition accuracy, physical singing, music-ownership questions and not-yet-run hosted checks were outside that deployment review. Local recognition remains available, supplied music stays unpublished, and actual hosted verification is performed separately.
+
+## Verified publication — 9 October 2026
+
+- Public repo https://github.com/verywaterrrr/sight. has the requested exact name and public visibility.
+- HTTPS website https://verywaterrrr.github.io/sight./ is live.
+- [Initial GitHub Actions deployment](https://github.com/verywaterrrr/sight./actions/runs/37896742944) passed 33 tests, public build and Pages deployment.
+- The actual hosted browser check passed demo practice, orientations/page turns, shared parts/rhythm, Web Audio/metronome/synthetic microphone, page filtering/reinclusion, corrections/reload and PDF-only selected-page upload/save. No recognition API request occurred.
+- The remote tracked tree excludes private score artifacts/evidence. The website returns404 for local trust material.
+
+New source pushes to main redeploy automatically. Physical microphone/speaker behaviour and an independently hosted recognition backend remain pending.

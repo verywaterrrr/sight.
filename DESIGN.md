@@ -14,17 +14,19 @@ Approved direction: minimalist iPad choir practice, original PDF central, warm p
 
 ## Modules
 
-- `app.js`: application controller and DOM interactions.
+- `app.js`: application controller and DOM interactions; `assets/app-config.json`: static/local feature and sample selection.
 - `renderer.js`: PDF reading raster budget; `vendor/`: bundled PDF.js/PDF-lib and licences.
 - `state.js`: page windows and linked voice/rhythm state.
 - `timeline.js`: quarter-note musical event scheduling, count-in, ties and monitor target.
 - `audio.js`: Web Audio look-ahead scheduler, independent metronome and live part gains.
 - `pitch.js`: on-device capture, YIN, confidence/tolerances and accompaniment ambiguity.
 - `corrections.js`: immutable validated edits and measure reflow; `sample-upgrade.js`: preserve edits during bundled sample expansion.
+- `public-score.js`: selected-page demo playback and preservation of edits on page reinclusion.
+- `scripts/build-pages.mjs`: explicit public deployment allowlist; `.github/workflows/pages.yml`: GitHub Pages CI/deploy.
 - `storage.js`: IndexedDB persistence; `recognition-client.js`: selected-page extraction and job lifecycle.
 - `server/recognition.py`: external Audiveris normalization with original OMR geometry; `server/service.py`: local HTTP/optional TLS jobs and static assets.
 - `server/https.cjs`: project-local certificates and iPad setup profile, with no trust-store installation.
 
 ## Evidence boundaries
 
-Chrome and WebKit automation verify browser behaviour. Actual Web Audio rendering verifies audible frequencies and loop timing. Synthetic microphone capture verifies the analysis pipeline. None establishes physical iPad speaker bleed, singing accuracy, device latency or hosted deployment. Those remain release gates.
+Chrome and WebKit automation verify browser behaviour. Actual Web Audio rendering verifies audible frequencies and loop timing. Synthetic microphone capture verifies the analysis pipeline. The public GitHub Pages demo and PDF-viewing workflows have also passed browser checks against the deployed URL. Physical iPad speaker bleed, singing accuracy and device latency remain acceptance gates. Automatic uploaded-PDF recognition still requires the local server.
