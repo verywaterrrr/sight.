@@ -14,3 +14,9 @@ export function enterRhythm(state) {
 export function leaveRhythm(state) {
   state.selected = new Set(state.saved); state.mode = 'notes';
 }
+export function normalisePartVolumes(parts, saved = {}) {
+  return Object.fromEntries(parts.map(({ id }) => {
+    const level = saved?.[id];
+    return [id, typeof level === 'number' && Number.isFinite(level) ? Math.max(0, Math.min(1, level)) : 1];
+  }));
+}

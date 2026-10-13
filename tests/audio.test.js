@@ -13,3 +13,9 @@ test('muted sustained parts can be enabled and muted immediately without restart
 test('tempo changes during count-in restart a complete musical count instead of skipping it',()=>{const ctx=context(),p=player(ctx);try{p.play(score,0,{bpm:60,countIn:true});ctx.currentTime=1.1;p.setBpm(120);assert.equal(p.counting,true);assert.equal(p.plan.filter(e=>e.kind==='count').length,4);assert.ok(Math.abs(p.origin-p.base-2)<1e-9);}finally{p.stop();}});
 test('pause remembers that the count was in progress',()=>{const ctx=context(),p=player(ctx);p.play(score,0,{bpm:60,countIn:true});ctx.currentTime=1.1;p.pause();assert.equal(p.pausedWasCounting,true);assert.equal(p.paused,0);});
 test('written-repeat transport starts at the chosen note before its initial scheduling lead',()=>{const ctx=context(),p=player(ctx);try{const s={...score,measures:[0,1,2].map(i=>({number:i+1,start:i*4,duration:4})),repeats:[{id:'r',startMeasure:1,endMeasure:2,times:2}]};p.play(s,0,{countIn:false});assert.equal(p.position(),0);}finally{p.stop();}});
+test('part levels update sustained playback and survive mute/unmute without moving the transport',()=>{
+ const ctx=context();let selected=new Set(['S','P']),volumes={S:.35,P:.8};const p=new ScorePlayer(ctx,{selection:()=>selected,volume:part=>volumes[part]??1});
+ try{p.play(score,0,{bpm:60,countIn:false});const voice=p.partBus('S'),piano=p.partBus('P');assert.equal(voice.gain.value,.35);assert.equal(piano.gain.value,.8);const origin=p.origin;
+ volumes.S=.15;p.syncSelection();assert.equal(voice.gain.value,.15);assert.equal(piano.gain.value,.8);selected.delete('S');p.syncSelection();assert.equal(voice.gain.value,0);selected.add('S');p.syncSelection();assert.equal(voice.gain.value,.15);volumes.S=0;p.syncSelection();assert.equal(voice.gain.value,0);assert.equal(p.origin,origin);assert.equal(p.playing,true);
+ }finally{p.stop();}
+});

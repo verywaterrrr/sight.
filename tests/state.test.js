@@ -22,3 +22,8 @@ test('rhythm starts empty, replaces its selection, and restores normal parts', (
   leaveRhythm(state);
   assert.deepEqual([...state.selected], ['soprano', 'bass']);
 });
+test('saved part levels keep zero, default missing parts, and reject invalid values',async()=>{
+ const {normalisePartVolumes}=await import('../state.js');assert.equal(typeof normalisePartVolumes,'function');
+ const parts=['S','A','T','B','P','X'].map(id=>({id}));const saved={S:0,A:.4,T:NaN,B:-.2,P:2,X:'0.5',old:.2};
+ assert.deepEqual(normalisePartVolumes(parts,saved),{S:0,A:.4,T:1,B:0,P:1,X:1});assert.deepEqual(normalisePartVolumes([{id:'new'}],null),{new:1});assert.equal(saved.B,-.2);
+});

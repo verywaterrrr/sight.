@@ -2,7 +2,7 @@ import {repeatVisits} from './repeats.js';
 import {InstrumentBank} from './instruments.js';
 import {countInPlan,playbackEvents,scoreMeasures} from './timeline.js';
 export class ScorePlayer{
- constructor(context,{selection=()=>new Set(),mode=()=> 'notes',onEvent=()=>{},onEnd=()=>{}}={}){this.ctx=context;Object.assign(this,{selection,mode,onEvent,onEnd});this.partGains=new Map();this.nodes=new Set();this.visuals=new Set();this.playing=false;this.bpm=92;this.generation=0;this.instruments=new InstrumentBank(context);}
+ constructor(context,{selection=()=>new Set(),volume=()=>1,mode=()=> 'notes',onEvent=()=>{},onEnd=()=>{}}={}){this.ctx=context;Object.assign(this,{selection,volume,mode,onEvent,onEnd});this.partGains=new Map();this.nodes=new Set();this.visuals=new Set();this.playing=false;this.bpm=92;this.generation=0;this.instruments=new InstrumentBank(context);}
  async prepare(score){await this.instruments.prepare(score);}
  stop(){this.generation++;this.playing=false;clearInterval(this.timer);this.visuals.forEach(clearTimeout);this.visuals.clear();this.nodes.forEach(n=>{try{n.stop();}catch{}});this.nodes.clear();}
  currentSegment(now=this.ctx.currentTime){return this.segments?.find(s=>now>=s.base&&now<s.endWall)||(now<(this.segments?.[0]?.base??0)?this.segments?.[0]:this.segments?.at(-1));}
@@ -27,8 +27,9 @@ export class ScorePlayer{
   this.plan.sort((a,b)=>a.when-b.when);this.index=0;this.from=from;this.end=to;this.endWall=origin;this.finalCompleted=visits.at(-1)?.afterCompleted||[];
  }
 
- partBus(part){if(!this.partGains.has(part)){const bus=this.ctx.createGain();bus.gain.value=this.selection().has(part)?1:0;bus.connect(this.ctx.destination);this.partGains.set(part,bus);}return this.partGains.get(part);}
- syncSelection(){for(const [part,bus] of this.partGains)bus.gain.setTargetAtTime(this.selection().has(part)?1:0,this.ctx.currentTime,.008);}
+ partLevel(part){if(!this.selection().has(part))return 0;const level=this.volume(part);return typeof level==='number'&&Number.isFinite(level)?Math.max(0,Math.min(1,level)):1;}
+ partBus(part){if(!this.partGains.has(part)){const bus=this.ctx.createGain();bus.gain.value=this.partLevel(part);bus.connect(this.ctx.destination);this.partGains.set(part,bus);}return this.partGains.get(part);}
+ syncSelection(){for(const [part,bus] of this.partGains)bus.gain.setTargetAtTime(this.partLevel(part),this.ctx.currentTime,.008);}
  schedule(e){if(e.kind==='beat'||e.kind==='count')this.click(e.when,e.accent);
   else if(e.kind==='note'){if(this.mode()==='rhythm'){if(e.attack)this.click(e.when,false,'wood',.20,e.note.part);}else this.note(e.when,e.note.midi,e.duration*60/this.bpm,e.note.part);}
   const generation=this.generation;const id=setTimeout(()=>{this.visuals.delete(id);if(this.playing&&generation===this.generation)this.onEvent(e);},Math.max(0,(e.when-this.ctx.currentTime)*1000));this.visuals.add(id);

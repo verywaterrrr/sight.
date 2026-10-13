@@ -76,3 +76,7 @@ PDF.js is distributed under Apache 2.0; PDF-lib under MIT. Their notices are inc
 The hosted recognition provider is [Audiveris 5.11.0](https://github.com/Audiveris/audiveris/tree/5.11.0), a separate AGPLv3 executable installed by Docker. Its source and license are available at that link; launcher heap settings are adjusted for the service.
 
 No license has been selected for the application source. Third-party license terms remain applicable to their respective components.
+
+Open **Mix** in the practice controls to set each voice or piano part from 0–100%. Levels apply during playback and are saved separately for each score; muting a part keeps its level.
+
+Click **sight.** to open the main menu, upload another PDF, or reopen recent scores. Every readable upload is saved on this device before recognition starts, including when page selection or recognition is cancelled. Scores, included pages, corrections and mix settings remain available in the same browser after reload.

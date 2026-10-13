@@ -27,3 +27,12 @@
 
 .repeat-highlighter{position:absolute;background:rgba(255,221,46,.55);mix-blend-mode:multiply;border-radius:3px;pointer-events:none;z-index:2;}
 .repeat-highlighter[hidden]{display:none;}
+
+/* Part mix uses the existing practice drawer and native touch-friendly sliders. */
+.part-volume-row{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:8px 16px;border-top:1px solid var(--line);padding:18px 0 12px}
+#part-volume-controls{margin-top:22px}.part-volume-row label{font-size:12px;overflow-wrap:anywhere}.part-volume-row output{font-size:11px;color:var(--muted);font-variant-numeric:tabular-nums}.part-volume-row input{grid-column:1/-1;width:100%;min-width:0;margin:0}.part-volume-status{grid-column:1/-1;color:var(--muted);font-size:9px;line-height:1.5}
+.transport-wrap{width:min(940px,calc(100% - 44px))}
+@media(max-width:480px){.transport-wrap{width:calc(100% - 20px)}.practice-tools{min-width:0}.transport{gap:4px}.tool-button{padding:0 4px;font-size:8px}.metro-tool span:last-child{font-size:8px}}
+
+.main-menu{width:min(1000px,100%);margin:0 auto;padding:44px 36px 70px;overflow:auto;max-height:calc(100dvh - 94px)}.main-menu-heading{display:flex;justify-content:space-between;align-items:center;gap:24px}.main-menu-heading h2{font-size:40px}.main-menu-heading p{font-size:12px;color:var(--muted);line-height:1.6;margin-top:12px}.main-menu-actions{display:flex;gap:18px;align-items:center;margin:30px 0 40px}.main-menu-actions>span{font-size:10px;color:var(--muted)}.main-menu-label{font-size:10px;font-weight:500;letter-spacing:1.2px;text-transform:uppercase;color:var(--muted);margin:30px 0 14px}.main-menu .saved-score-row{margin:0;min-height:80px}.main-menu .saved-score-open{min-width:0;padding:18px 0}.saved-score-open b{font:20px Georgia,serif;display:block;overflow-wrap:anywhere}.saved-score-open small{font:10px/1.6 Arial,sans-serif;display:block;color:var(--muted);margin-top:8px}.main-menu .library-score{padding:16px 0;max-width:500px}.main-menu .panel-footnote{text-align:left;max-width:600px}
+@media(max-width:600px){.main-menu{padding:28px 20px 50px;max-height:calc(100dvh - 78px)}.main-menu-heading{align-items:flex-start;gap:12px}.main-menu-heading h2{font-size:30px}.main-menu-heading .button{font-size:10px;padding:0 10px}.main-menu-actions{align-items:flex-start;flex-direction:column;gap:12px}.saved-score-open b{font-size:18px}}
