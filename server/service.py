@@ -6,7 +6,9 @@ from pathlib import Path
 from urllib.parse import urlparse, parse_qs, unquote
 import hashlib, inspect, json, threading, uuid, os, time, shutil
 from recognition import recognize, available
+from assets import asset_version, version_asset
 ROOT=Path(__file__).resolve().parents[1]
+ASSET_VERSION=asset_version(ROOT)
 CACHE=Path(os.environ.get('SIGHT_CACHE_DIR',str(ROOT/'.runtime/jobs')))
 CACHE.mkdir(parents=True,exist_ok=True)
 JOBS={};LOCK=threading.Lock();POOL=ThreadPoolExecutor(max_workers=1)
@@ -95,6 +97,12 @@ class Handler(SimpleHTTPRequestHandler):
             return self.send_json(data or {'error':'Job not found.'},200 if data else 404)
         if any(segment.startswith('.') for segment in path.split('/')) or path.startswith(('/server/','/tests/','/docs/')):
             return self.send_error(404)
+        file=ROOT/('index.html' if path=='/' else path.lstrip('/'))
+        if file.is_file() and file.suffix in ('.html','.js','.mjs','.css'):
+            body=version_asset(file.read_text(),ASSET_VERSION).encode()
+            self.send_response(200);self.send_header('Content-Type',self.guess_type(str(file)));self.send_header('Content-Length',str(len(body)));self.send_header('Cache-Control','no-cache');self.end_headers()
+            if self.command!='HEAD':self.wfile.write(body)
+            return
         if self.command=='HEAD':super().do_HEAD()
         else:super().do_GET()
     def do_HEAD(self):self.do_GET()

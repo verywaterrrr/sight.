@@ -24,3 +24,11 @@ test('page filtering remaps complete repeats and drops incomplete passages',()=>
  const source={parts:[],duration:16,warnings:[],events:[],staves:{},measures:[0,1,2,3].map(page=>({number:page+1,page,start:page*4,duration:4})),repeats:[{id:'r',startMeasure:3,endMeasure:4,times:2}],repeatMarks:[{repeatId:'r',page:3}],endings:[{repeatId:'r',startMeasure:4,endMeasure:4,numbers:[1]}]};
  const full=scoreForPages(source,[2,3]);assert.deepEqual(full.repeats,[{id:'r',startMeasure:1,endMeasure:2,times:2}]);assert.equal(full.endings[0].startMeasure,2);assert.equal(full.repeatMarks.length,1);const partial=scoreForPages(source,[3]);assert.deepEqual(partial.repeats,[]);assert.deepEqual(partial.repeatMarks,[]);assert.deepEqual(partial.endings,[]);
 });
+test('a new release versions its HTML entry and the entire imported module graph',async()=>{
+ const root=await mkdtemp(path.join(tmpdir(),'sight-version-'));try{
+ for(const name of PUBLIC_FILES){await mkdir(path.dirname(path.join(root,name)),{recursive:true});await writeFile(path.join(root,name),'public');}
+ await writeFile(path.join(root,'index.html'),'<link href="styles.css"><script type="module" src="app.js"></script>');await writeFile(path.join(root,'app.js'),"import './audio.js';import './state.js';");await writeFile(path.join(root,'audio.js'),"import './instruments.js';");
+ await buildPages(root,path.join(root,'dist'));const html=await readFile(path.join(root,'dist/index.html'),'utf8'),js=await readFile(path.join(root,'dist/app.js'),'utf8');const version=html.match(/app\.js\?v=([a-f0-9]+)/)?.[1];assert.ok(version,'entry script must bypass a previous release cached at app.js');assert.ok(html.includes('styles.css?v='+version));assert.ok(js.includes('audio.js?v='+version));assert.ok(js.includes('state.js?v='+version));assert.ok((await readFile(path.join(root,'dist/audio.js'),'utf8')).includes('instruments.js?v='+version));
+ await writeFile(path.join(root,'state.js'),'export const changed=true;');await buildPages(root,path.join(root,'dist'));assert.notEqual(await readFile(path.join(root,'dist/index.html'),'utf8'),html);
+ }finally{await rm(root,{recursive:true,force:true});}
+});
