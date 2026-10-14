@@ -37,6 +37,9 @@ def housekeeping():
 
 def worker(job,data,pages,key):
     try:
+        with LOCK:
+            if job['cancel'].is_set():return
+            job.update(status='running',stage='preparing',percent=0,pageCount=len(pages),message='Preparing the selected pages…')
         directory=CACHE/key;directory.mkdir(exist_ok=True);os.utime(directory,None)
         if job['cancel'].is_set(): return
         result_file=directory/'score.json'
@@ -45,8 +48,12 @@ def worker(job,data,pages,key):
         else:
             input_file=directory/'input.pdf';input_file.write_bytes(data)
             def progress(update):
-                if job['cancel'].is_set(): raise RuntimeError('Recognition cancelled.')
-                with LOCK: job.update(message=update['message'],status='running')
+                with LOCK:
+                    if job['cancel'].is_set():return
+                    fields={k:update[k] for k in ('stage','percent','pageIndex','pageCount','sourcePage','message') if k in update}
+                    index=fields.get('pageIndex')
+                    if isinstance(index,int) and 1<=index<=len(pages):fields['sourcePage']=pages[index-1]+1
+                    job.update(**fields,status='running')
             kwargs={'progress':progress,'timeout':1800}
             if 'cancel_event' in inspect.signature(recognize).parameters:kwargs['cancel_event']=job['cancel']
             score=recognize(input_file,list(range(len(pages))),directory/'output',**kwargs)
@@ -58,7 +65,7 @@ def worker(job,data,pages,key):
             score['recognition']['selectedPages']=pages
             result_file.write_text(json.dumps(score))
         with LOCK:
-            if not job['cancel'].is_set():job.update(status='done',message='Ready for review.',score=score)
+            if not job['cancel'].is_set():job.update(status='done',stage='review',percent=100,message='Ready for review.',score=score)
     except Exception as error:
         with LOCK:job.update(status='cancelled' if job['cancel'].is_set() else 'error',error=str(error),message=str(error))
     finally:
@@ -132,7 +139,7 @@ class Handler(SimpleHTTPRequestHandler):
             if reader.is_encrypted:raise ValueError('Password-protected PDFs are not supported.')
             if len(reader.pages)!=len(pages):raise ValueError('Submitted PDF must contain only the selected pages.')
             key=hashlib.sha256(data+json.dumps(pages).encode()+b'Audiveris-5.11-provider-v3').hexdigest()
-            job={'id':uuid.uuid4().hex,'status':'queued','message':'Waiting to process selected pages.','cancel':threading.Event(),'createdAt':time.time(),'cacheKey':key}
+            job={'id':uuid.uuid4().hex,'status':'queued','stage':'queued','percent':None,'pageCount':len(pages),'message':'Waiting to process selected pages.','cancel':threading.Event(),'createdAt':time.time(),'cacheKey':key}
             with LOCK:
                 JOBS[job['id']]=job
             POOL.submit(worker,job,data,pages,key);submitted=True

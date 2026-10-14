@@ -5,10 +5,11 @@ const assert=require('node:assert/strict');
  const browser=await chromium.launch({headless:true,executablePath:process.env.CHROME_PATH||'/Applications/Google Chrome.app/Contents/MacOS/Google Chrome'});
  try{
   const page=await browser.newPage({viewport:{width:1180,height:820},deviceScaleFactor:2});
-  const errors=[];page.on('pageerror',e=>errors.push(e.message));
+  const errors=[],progress=[];page.on('pageerror',e=>errors.push(e.message));
+  page.on('response',async response=>{if(response.request().method()==='GET'&&/\/api\/jobs\/[^/?]+$/.test(response.url())){try{const job=await response.json();progress.push({status:job.status,percent:job.percent,page:job.sourcePage});}catch{}}});
   const url=process.env.SIGHT_TEST_URL||'http://localhost:5173/';
   await page.goto(url);const ready=()=>page.waitForFunction(()=>document.querySelector('.paper canvas')&&[...document.querySelectorAll('.paper canvas')].every(c=>c.dataset.ready==='true'));
-  await ready();
+  await page.waitForLoadState('networkidle');await ready();
   const config=await (await page.request.get(new URL('assets/app-config.json',url).href)).json();
   assert.equal(config.recognitionAvailable,true);
   const pdf=process.env.SIGHT_TEST_PDF;
@@ -21,6 +22,14 @@ const assert=require('node:assert/strict');
   let last='';const timer=setInterval(async()=>{const message=await page.locator('#recognition-message').textContent().catch(()=>null);if(message&&message!==last){last=message;console.log(message);}},15000);
   try{await page.waitForFunction(()=>document.querySelector('#review-dialog').open||(!document.querySelector('#recognition-dialog').open&&!document.querySelector('#toast').hidden),{},{timeout:600000});assert.equal(await page.locator('#review-dialog').evaluate(d=>d.open),true);}catch(error){console.error('Recognition result:',await page.locator('#toast').textContent());throw error;}finally{clearInterval(timer);}
   assert.ok(await page.locator('#review-part option').count()>=4);
+  assert.equal(await page.locator('#recognition-progress').evaluate(el=>el.value),100);
+  if(process.env.SIGHT_TEST_PROGRESS){
+   const values=progress.filter(p=>Number.isFinite(p.percent)).map(p=>p.percent);
+   assert.ok(new Set(values.filter(p=>p>5&&p<95)).size>=2,JSON.stringify(progress));
+   assert.ok(values.every((p,i)=>i===0||p>=values[i-1]),JSON.stringify(progress));
+   assert.ok(progress.some(p=>pages.includes(p.page)),JSON.stringify(progress));
+   console.log('Reported processing progress:',JSON.stringify(progress));
+  }
   await page.locator('#finish-review').click();await ready();
   const result=await page.evaluate(async()=>{const {library}=await import('./storage.js');const record=await library.get(localStorage.getItem('sight-last-score'));const s=record.score;return {parts:s.parts.length,events:s.events.length,mapped:s.events.filter(n=>n.x!=null&&n.y!=null).length,pages:record.pages,seconds:s.recognition.seconds};});
   assert.deepEqual(result.pages,pages.map(n=>n-1));assert.ok(result.events>50);assert.ok(result.mapped>50);assert.ok(await page.locator('[data-note]').count()>20);

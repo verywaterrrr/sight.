@@ -15,6 +15,7 @@ import subprocess
 import time
 import xml.etree.ElementTree as ET
 import zipfile
+from progress import RecognitionProgress
 
 ROOT = Path(__file__).resolve().parents[1]
 DEFAULT_CLI = ROOT / '.runtime/Audiveris.app/Contents/MacOS/Audiveris'
@@ -268,11 +269,14 @@ def recognize(pdf_path, pages, output_dir, progress=None, timeout=900, cancel_ev
         env['TESSDATA_PREFIX'] = str(tessdata)
     args = [str(cli), '-batch', '-transcribe', '-export', '-save', '-output', str(out), '--', str(selected_pdf)]
     if progress:
-        progress({'stage': 'recognizing', 'message': 'Reading pitches, rhythms, and staff positions.'})
+        progress({'stage': 'recognizing', 'percent':5, 'pageCount':len(page_map), 'message': 'Reading pitches, rhythms, and staff positions.'})
     started = time.monotonic()
-    with (out / 'recognition.log').open('w') as log:
+    tracker=RecognitionProgress(page_map)
+    with (out / 'recognition.log').open('w') as log, (out / 'recognition.log').open('r',errors='replace') as monitor:
         run = subprocess.Popen(args, env=env, stdout=log, stderr=subprocess.STDOUT, start_new_session=True)
         while run.poll() is None:
+            for update in tracker.feed(monitor.read()):
+                if progress:progress(update)
             cancelled = cancel_event is not None and cancel_event.is_set()
             timed_out = time.monotonic() - started > timeout
             if cancelled or timed_out:
@@ -289,6 +293,8 @@ def recognize(pdf_path, pages, output_dir, progress=None, timeout=900, cancel_ev
                 run.wait(timeout=0.5)
             except subprocess.TimeoutExpired:
                 pass
+        for update in tracker.feed(monitor.read()+'\n'):
+            if progress:progress(update)
     mxls, omrs = sorted(out.glob('*.mxl')), sorted(out.glob('*.omr'))
     if run.returncode or not mxls or not omrs:
         if os.environ.get('RAILWAY_PROJECT_ID'):
@@ -297,6 +303,7 @@ def recognize(pdf_path, pages, output_dir, progress=None, timeout=900, cancel_ev
         raise RuntimeError('Recognition could not export a score. Inspect recognition.log and retry with a clean score PDF.')
     if len(mxls) != 1:
         raise RuntimeError('Selected pages exported as multiple movements. Select a continuous passage or import movements separately.')
+    if progress:progress({'stage':'finalizing','percent':98,'message':'Preparing the playable score…'})
     lines = (out / 'recognition.log').read_text(errors='replace').splitlines()
     warnings = [line.split('|', 1)[-1].strip() for line in lines if line.startswith('WARN')]
     result = parse_result(mxls[0], omrs[0], warnings)
@@ -310,7 +317,7 @@ def recognize(pdf_path, pages, output_dir, progress=None, timeout=900, cancel_ev
     result['recognition']['seconds'] = round(time.monotonic() - started, 2)
     (out / 'recognized-score.json').write_text(json.dumps(result, indent=2))
     if progress:
-        progress({'stage': 'review', 'message': 'Recognition completed. Review the notes and part names.'})
+        progress({'stage': 'review', 'percent':99, 'message': 'Recognition completed. Review the notes and part names.'})
     return result
 
 

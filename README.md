@@ -23,6 +23,8 @@ Automatic PDF recognition runs on the Railway Python/Audiveris service. GitHub P
 
 The hosted service processes one score at a time, with at most four admitted jobs, 30 selected pages and a 64 MB upload limit. Smaller passages finish faster. Recognition needs human review. A redeploy can interrupt processing; retry the upload if that happens.
 
+Recognition shows a progress bar, percentage, current processing step and original PDF page number. The percentage follows reported processing steps, so it can pause during a slow step; preparation, upload and queueing use an indeterminate bar. It reaches 100% when the playable score is ready for review.
+
 Voice feedback uses a conservative pitch detector. Silence, low confidence and known accompaniment-frequency overlaps stay neutral. Real iPad singing with speaker accompaniment has not been validated. Written repeat barlines and numbered endings follow their playback passes. Yellow repeat marks clear after the final pass; custom practice loops are supported. D.C., D.S. and coda jumps require manual navigation. Previously imported PDFs should be re-read once to obtain repeat metadata.
 
 Piano playback uses recorded Salamander grand-piano samples; choir playback uses separate recorded female and male Sonatina voices. Sound credits and licenses are in [assets/sounds/LICENSES.md](assets/sounds/LICENSES.md).
